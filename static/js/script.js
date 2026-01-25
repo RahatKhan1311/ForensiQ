@@ -1,8 +1,6 @@
 let CASES = [];
 
 // Fetch cases from backend
-// Fetch cases from backend
-// Fetch cases from backend
 function fetchCases() {
   fetch("/api/cases")
     .then(res => res.json())
@@ -632,6 +630,48 @@ async function refreshCaseDropdown() {
 // Run this immediately so the list is ready when the page opens
 refreshCaseDropdown();
 
+// === Save functions  ===
+  function saveProfile() {
+    const data = {
+      name: document.getElementById("user-name").value,
+      email: document.getElementById("user-email").value,
+      password: document.getElementById("user-password").value
+    };
+    console.log("Profile saved:", data);
+    alert("Profile saved!");
+  }
+
+  function savePreferences() {
+    const data = {
+      darkTheme: document.getElementById("toggle-dark-theme").checked,
+      neonTheme: document.getElementById("toggle-neon-theme").checked,
+      sidebarBehavior: document.getElementById("sidebar-behavior").value,
+      refreshInterval: parseInt(document.getElementById("refresh-interval").value)
+    };
+
+    localStorage.setItem("appPreferences", JSON.stringify(data));
+    console.log("Preferences saved:", data);
+    alert("Preferences saved!");
+
+    applyTheme(); // apply dark/neon immediately
+  }
+
+  function saveIntegrations() {
+    const data = {
+      ocrApiKey: document.getElementById("ocr-api-key").value,
+      aiApiKey: document.getElementById("ai-api-key").value
+    };
+    console.log("API Keys saved:", data);
+    alert("API keys saved!");
+  }
+
+  function resetApp() {
+    if(confirm("Are you sure? This will reset all app settings!")) {
+      console.log("App reset!");
+      alert("App reset!");
+    }
+  }
+
 // On page load
 document.addEventListener('DOMContentLoaded', () => {
   fetchCases();
@@ -662,12 +702,125 @@ document.addEventListener('DOMContentLoaded', () => {
   if(newCaseBtn) newCaseBtn.onclick = createNewCase;
 
   const caseSelect = document.getElementById("case-id-input");
-  
-  // settings toggles
-  document.getElementById('toggle-neon').onchange = (e)=>{
-    document.querySelectorAll('.neon-text').forEach(el=> el.style.textShadow = e.target.checked ? '0 2px 10px rgba(0,210,255,0.06)' : 'none');
-  };
-  document.getElementById('sticky-sidebar').onchange = (e)=>{
-    document.querySelector('aside').style.position = e.target.checked ? 'sticky' : 'static';
-  };
+
+  async function loadCasesForReports() {
+  const select = document.getElementById("report-case-select");
+  if (!select) return;
+
+  try {
+    const res = await fetch("/api/cases");
+    const cases = await res.json();
+
+    select.innerHTML = '<option value="">-- Select a Case --</option>';
+
+    if (Array.isArray(cases)) {
+      cases.forEach(c => {
+        const option = document.createElement("option");
+        option.value = c.case_id || c.id;  // backend case_id
+        option.textContent = c.title || `Case ${c.id}`;
+        select.appendChild(option);
+      });
+    } else {
+      select.innerHTML = '<option value="">No cases available</option>';
+    }
+
+  } catch (err) {
+    console.error("Error loading cases for reports:", err);
+    select.innerHTML = '<option value="">Error loading cases</option>';
+  }
+}
+
+// Run it immediately
+loadCasesForReports();
+
+const downloadBtn = document.getElementById("downloadReportBtn");
+if (downloadBtn) {
+  downloadBtn.addEventListener("click", async () => {
+    const caseSelect = document.getElementById("report-case-select");
+    const selectedCaseId = caseSelect.value;
+
+    if (!selectedCaseId) return alert("Please select a case first!");
+
+    downloadBtn.disabled = true;
+    downloadBtn.textContent = "Generating PDF...";
+
+    try {
+      const res = await fetch(`/api/reports/${selectedCaseId}/pdf`);
+      if (!res.ok) throw new Error("Failed to generate PDF");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Case_${selectedCaseId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+      alert("Error: " + err.message);
+    } finally {
+      downloadBtn.disabled = false;
+      downloadBtn.textContent = "Generate PDF Summary";
+    }
+  });
+}
+
+// === SETTINGS TABS ===
+document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+
+      // Show selected content
+      document.querySelectorAll(".tab-content").forEach(tc => tc.classList.add("hidden"));
+      const selected = document.querySelector(`.tab-content[data-tab='${tab}']`);
+      if (selected) selected.classList.remove("hidden");
+
+      // Highlight active tab
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("border-cyan-400"));
+      btn.classList.add("border-cyan-400");
+    });
+  });
+
+
+  // === Load settings from localStorage ===
+  function loadSettings() {
+    const prefs = JSON.parse(localStorage.getItem("appPreferences") || "{}");
+
+    document.getElementById("toggle-dark-theme").checked = prefs.darkTheme || false;
+    document.getElementById("toggle-neon-theme").checked = prefs.neonTheme || false;
+    document.getElementById("sidebar-behavior").value = prefs.sidebarBehavior || "sticky";
+    document.getElementById("refresh-interval").value = prefs.refreshInterval || 30;
+
+    applyTheme();
+  }
+
+  loadSettings();
+
+  // === APPLY THEME FUNCTION ===
+  function applyTheme() {
+  const dark = document.getElementById("toggle-dark-theme").checked;
+  const neon = document.getElementById("toggle-neon-theme").checked;
+
+  // Dark Mode
+  if(dark) {
+    document.body.classList.add("dark");
+  } else {
+    document.body.classList.remove("dark");
+  }
+
+  // Neon Mode
+  if(neon) {
+    document.body.classList.add("neon");
+  } else {
+    document.body.classList.remove("neon");
+  }
+}
+
+// Instant apply on checkbox change
+document.getElementById("toggle-dark-theme").addEventListener("change", applyTheme);
+document.getElementById("toggle-neon-theme").addEventListener("change", applyTheme);
+
+
 });

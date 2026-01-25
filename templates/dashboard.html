@@ -75,6 +75,20 @@
       padding: 0 3px;
       border-radius: 3px;
     }
+
+    body.dark {
+      background-color: #111;
+      color: #eee;
+    }
+
+    body.neon {
+      --neon-color: #0ff;
+    }
+
+    .neon-text {
+      color: var(--neon-color);
+      text-shadow: 0 0 5px var(--neon-color), 0 0 10px var(--neon-color), 0 0 20px var(--neon-color);
+    }
   </style>
 </head>
 <body class="text-slate-200 antialiased">
@@ -307,25 +321,107 @@
       <section id="reports" class="hidden space-y-6">
         <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
           <h2 class="text-lg font-semibold">Reports</h2>
-          <p class="text-sm text-slate-400">Generate or export case summaries (mock)</p>
+          <p class="text-sm text-slate-400">Generate or export case summaries</p>
+
+          <!-- Case selector -->
           <div class="mt-4">
-            <button class="py-2 px-3 rounded-md bg-gradient-to-r from-cyan-500 to-blue-300 text-black font-semibold">Generate PDF Summary</button>
+            <label for="report-case-select" class="text-sm text-slate-300">Select Case:</label>
+            <select id="report-case-select" class="w-full p-2 mt-1 rounded-md bg-black/20 text-white">
+              <option value="">-- Loading Cases --</option>
+            </select>
+          </div>
+
+          <!-- Generate PDF button -->
+          <div class="mt-4">
+            <button id="downloadReportBtn" class="py-2 px-3 rounded-md bg-gradient-to-r from-cyan-500 to-blue-300 text-black font-semibold">
+              Generate PDF Summary
+            </button>
           </div>
         </div>
       </section>
 
       <!-- SETTINGS -->
-      <section id="settings" class="hidden space-y-6">
-        <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
-          <h2 class="text-lg font-semibold">Settings</h2>
-          <p class="text-sm text-slate-400">Theme & preferences</p>
+<section id="settings" class="hidden p-4 space-y-6">
+  <h2 class="text-lg font-semibold">Settings</h2>
 
-          <div class="mt-4 space-y-3">
-            <label class="flex items-center gap-3"><input id="toggle-neon" type="checkbox" checked /> <span>Enable Neon Accents</span></label>
-            <label class="flex items-center gap-3"><input id="sticky-sidebar" type="checkbox" checked /> <span>Sticky Sidebar</span></label>
-          </div>
-        </div>
-      </section>
+  <!-- Tabs -->
+  <div class="flex space-x-4 border-b border-white/10">
+    <button class="tab-btn py-2 px-4 border-b-2 border-transparent text-sm font-semibold" data-tab="profile">Profile</button>
+    <button class="tab-btn py-2 px-4 border-b-2 border-transparent text-sm font-semibold" data-tab="preferences">Preferences</button>
+    <button class="tab-btn py-2 px-4 border-b-2 border-transparent text-sm font-semibold" data-tab="integrations">Integrations</button>
+    <button class="tab-btn py-2 px-4 border-b-2 border-transparent text-sm font-semibold" data-tab="advanced">Advanced</button>
+  </div>
+
+  <!-- Tab Contents -->
+  <div id="settings-content" class="space-y-4">
+
+    <!-- PROFILE TAB -->
+    <div class="tab-content hidden" data-tab="profile">
+      <h3 class="text-md font-semibold mb-2">User Profile</h3>
+      <label class="block mb-1 text-sm">Name</label>
+      <input type="text" id="user-name" class="w-full p-2 rounded-md bg-black/20 text-white" placeholder="Enter your name">
+      
+      <label class="block mt-2 mb-1 text-sm">Email</label>
+      <input type="email" id="user-email" class="w-full p-2 rounded-md bg-black/20 text-white" placeholder="Enter your email">
+
+      <label class="block mt-2 mb-1 text-sm">Password</label>
+      <input type="password" id="user-password" class="w-full p-2 rounded-md bg-black/20 text-white" placeholder="Change password">
+
+      <button class="mt-4 py-2 px-4 bg-gradient-to-r from-cyan-500 to-blue-300 text-black rounded-md font-semibold" onclick="saveProfile()">Save Profile</button>
+    </div>
+
+    <!-- PREFERENCES TAB -->
+    <div class="tab-content hidden" data-tab="preferences">
+      <h3 class="text-md font-semibold mb-2">App Preferences</h3>
+
+      <label class="flex items-center gap-2 mt-2">
+        <input type="checkbox" id="toggle-dark-theme">
+        Dark Mode
+      </label>
+
+      <label class="flex items-center gap-2 mt-2">
+        <input type="checkbox" id="toggle-neon-theme">
+        Neon Accents
+      </label>
+
+      <label class="block mt-2 mb-1 text-sm">Sidebar Behavior</label>
+      <select id="sidebar-behavior" class="w-full p-2 rounded-md bg-black/20 text-white">
+        <option value="sticky">Sticky</option>
+        <option value="collapsible">Collapsible</option>
+      </select>
+
+      <label class="block mt-2 mb-1 text-sm">Auto-refresh Interval (sec)</label>
+      <input type="number" id="refresh-interval" class="w-full p-2 rounded-md bg-black/20 text-white" min="5" value="30">
+
+      <button class="mt-4 py-2 px-4 bg-gradient-to-r from-cyan-500 to-blue-300 text-black rounded-md font-semibold" onclick="savePreferences()">Save Preferences</button>
+    </div>
+
+    <!-- INTEGRATIONS TAB -->
+    <div class="tab-content hidden" data-tab="integrations">
+      <h3 class="text-md font-semibold mb-2">API Integrations</h3>
+      <label class="block mb-1 text-sm">OCR API Key</label>
+      <input type="text" id="ocr-api-key" class="w-full p-2 rounded-md bg-black/20 text-white" placeholder="Enter OCR API key">
+
+      <label class="block mt-2 mb-1 text-sm">AI Analysis API Key</label>
+      <input type="text" id="ai-api-key" class="w-full p-2 rounded-md bg-black/20 text-white" placeholder="Enter AI API key">
+
+      <button class="mt-4 py-2 px-4 bg-gradient-to-r from-cyan-500 to-blue-300 text-black rounded-md font-semibold" onclick="saveIntegrations()">Save API Keys</button>
+    </div>
+
+    <!-- ADVANCED TAB -->
+    <div class="tab-content hidden" data-tab="advanced">
+      <h3 class="text-md font-semibold mb-2">Advanced Options</h3>
+
+      <label class="flex items-center gap-2 mt-2">
+        <input type="checkbox" id="toggle-debug-mode">
+        Enable Debug Mode
+      </label>
+
+      <button class="mt-4 py-2 px-4 bg-red-500 text-black rounded-md font-semibold" onclick="resetApp()">Reset App Data</button>
+    </div>
+
+  </div>
+</section>
 
     </main>
   </div>
