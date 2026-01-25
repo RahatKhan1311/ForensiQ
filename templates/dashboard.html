@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ForensiQ - SPA Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root{
+      --neon: rgba(6,182,212,0.14);
+      --glass: rgba(255,255,255,0.03);
+      --accent: #00d2ff;
+      --accent-2: #3a7bd5;
+      --bg: #081024;
+    }
+    body { background: var(--bg); }
+    .glow-hover:hover{ box-shadow: 0 8px 30px rgba(0,210,255,0.08), inset 0 1px 0 rgba(255,255,255,0.02); }
+    .neon-text{ text-shadow: 0 2px 10px rgba(0,210,255,0.06); }
+    .fade-enter{ opacity: 0; transform: translateY(6px); }
+    .fade-enter-active{ opacity: 1; transform: translateY(0); transition: all 300ms cubic-bezier(.2,.9,.3,1); }
+    .pulse-scan{ animation: pulse 1.6s infinite; }
+    @keyframes pulse{ 0%{ box-shadow: 0 0 0 0 rgba(0,210,255,0.06);} 70%{ box-shadow: 0 0 0 12px rgba(0,210,255,0);} 100%{ box-shadow: 0 0 0 0 rgba(0,210,255,0);} }
+    /* small scrollbar style */
+    ::-webkit-scrollbar{ height:8px; width:8px }
+    ::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.04); border-radius:999px }
+
+    .similarity-card {
+    background: #1f1f2e;
+    padding: 16px;
+    border-radius: 12px;
+    margin-top: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    color: #fff;
+    }
+
+    .similarity-bar-wrapper {
+        margin-bottom: 12px;
+    }
+
+    .sim-bar-outer {
+        background: #333;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .sim-bar-inner {
+        width: 0%;
+        color: white;
+        padding: 4px;
+        text-align: right;
+        font-weight: bold;
+        border-radius: 6px 0 0 6px;
+    }
+
+    .sim-list {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .sim-list-item {
+        background: rgba(255,255,255,0.05);
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    mark {
+      background-color: #facc15;
+      color: black;
+      padding: 0 3px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="text-slate-200 antialiased">
+
+  <div class="max-w-[1400px] mx-auto p-6 grid grid-cols-12 gap-6 min-h-screen">
+
+    <!-- SIDEBAR -->
+    <aside class="col-span-3 bg-gradient-to-b from-white/5 via-transparent to-transparent rounded-2xl p-4 backdrop-blur-md border border-white/10 sticky top-6 h-[calc(100vh-48px)] overflow-auto">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg flex items-center justify-center font-bold text-black">FQ</div>
+        <div>
+          <div class="font-semibold text-lg neon-text">ForensiQ</div>
+          <div class="text-xs text-slate-400">AI Crime Case Analyzer</div>
+        </div>
+      </div>
+
+      <nav class="space-y-2">
+        <button class="w-full text-left flex items-center gap-3 p-2 rounded-md bg-cyan-400/8 glow-hover" onclick="showSection('dashboard')">
+          <span>🏠</span>
+          <span class="text-sm font-semibold">Dashboard</span>
+        </button>
+
+        <button class="w-full text-left flex items-center gap-3 p-2 rounded-md hover:bg-white/5" onclick="showSection('cases'); fetchCases();">
+          <span>🧾</span>
+          <span class="text-sm text-slate-300">Cases</span>
+        </button>
+
+        <button class="w-full text-left flex items-center gap-3 p-2 rounded-md hover:bg-white/5" onclick="showSection('analyzer')">
+          <span>🔎</span>
+          <span class="text-sm text-slate-300">AI Analyzer</span>
+        </button>
+
+        <button class="w-full text-left flex items-center gap-3 p-2 rounded-md hover:bg-white/5" onclick="showSection('reports')">
+          <span>📤</span>
+          <span class="text-sm text-slate-300">Reports</span>
+        </button>
+
+        <button class="w-full text-left flex items-center gap-3 p-2 rounded-md hover:bg-white/5" onclick="showSection('settings')">
+          <span>⚙️</span>
+          <span class="text-sm text-slate-300">Settings</span>
+        </button>
+      </nav>
+
+      <div class="mt-6 p-3 rounded-lg bg-white/5">
+        <div class="text-xs text-slate-400">Quick Actions</div>
+        <div class="mt-3 flex flex-col gap-2">
+          <button class="py-2 px-3 rounded-md text-sm bg-gradient-to-r from-cyan-500 to-blue-300 text-black font-semibold" onclick="createNewCase()">New Case</button>
+          <button class="py-2 px-3 rounded-md text-sm border border-white/10" onclick="showSection('analyzer')">Upload Evidence</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="col-span-9">
+      <header class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-3xl font-extrabold tracking-tight neon-text">Dashboard</h1>
+          <p class="text-slate-400 text-sm">Overview of active cases and AI insights</p>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-sm text-slate-400">Role: Investigator</div>
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center font-bold text-black">KR</div>
+        </div>
+      </header>
+
+      <!-- SECTIONS (SPA) -->
+      <section id="dashboard" class="space-y-6">
+        <!-- STATS -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+            <div class="text-xs text-slate-400">Open Cases</div>
+            <div id="openCasesCount" class="text-2xl font-bold">0</div>
+            <div id="openCasesDelta" class="text-sm text-slate-400">—</div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+            <div class="text-xs text-slate-400">Pending Analysis</div>
+            <div id="pendingCasesCount" class="text-2xl font-bold">0</div>
+            <div id="pendingCasesDelta" class="text-sm text-slate-400">—</div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+            <div class="text-xs text-slate-400">Avg Response (hrs)</div>
+            <div id="avgResponse" class="text-2xl font-bold">—</div>
+            <div id="avgResponseDelta" class="text-sm text-slate-400">—</div>
+          </div>
+        </div>
+
+        <!-- Quick lists -->
+        <div class="grid grid-cols-12 gap-6">
+          <div class="col-span-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+            <h2 class="font-semibold mb-4">Recent Cases</h2>
+            <ul id="recent-cases" class="space-y-3"></ul>
+          </div>
+
+          <div class="col-span-6 p-4 rounded-2xl bg-gradient-to-br from-cyan-400/10 to-transparent border border-white/10">
+            <h2 class="font-semibold mb-3">AI Analyzer (Quick)</h2>
+            <p class="text-sm text-slate-400 mb-3">Quick upload & run OCR</p>
+
+            <input id="quick-file" type="file" class="w-full text-sm mb-3 bg-black/20 p-2 rounded-md" />
+
+            <div class="flex gap-3 mb-3">
+              <button id="quick-ocr" class="flex-1 py-2 rounded-md bg-gradient-to-r from-cyan-500 to-blue-300 text-black font-semibold">Run OCR</button>
+              <button id="quick-sim" class="flex-1 py-2 rounded-md border border-white/10">Similarity Search</button>
+            </div>
+
+            <div id="quick-output" class="bg-black/30 p-3 rounded-md text-xs text-slate-400 h-24 overflow-auto">OCR Output will appear here...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CASES LIST -->
+      <section id="cases" class="hidden space-y-6">
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <h2 class="text-lg font-semibold">All Cases</h2>
+          <div class="mt-3">
+            <ul id="cases-list" class="space-y-2"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- CASE DETAIL -->
+      <section id="case-detail" class="hidden space-y-6">
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <div class="flex items-start gap-6">
+
+            <div class="w-2/3">
+              <h3 id="case-title" class="font-semibold">Case — FQ-2025-001</h3>
+              <div id="case-sub" class="text-slate-400 text-sm mb-4">Details</div>
+
+              <div class="grid grid-cols-3 gap-4 mb-4">
+                <div class="p-3 rounded-lg bg-black/20">Status<br/><strong id="case-status">Open</strong></div>
+                <div class="p-3 rounded-lg bg-black/20">Assigned To<br/><strong id="case-owner">K. Rahat</strong></div>
+                <div class="p-3 rounded-lg bg-black/20">Priority<br/><strong id="case-priority">High</strong></div>
+              </div>
+
+              <h4 class="font-medium mb-2">Evidence</h4>
+              <ul id="evidence-list" class="space-y-2 mb-4"></ul>
+            </div>
+
+            <div class="w-1/3">
+              <h4 class="font-semibold mb-3">Quick Notes</h4>
+              <div id="case-notes" class="p-3 rounded-lg bg-black/20 max-h-48 overflow-auto text-sm text-slate-200"></div>
+
+              <div class="mt-4">
+                <h4 class="font-semibold mb-2">Actions</h4>
+                <div id="case-actions" class="flex flex-col gap-2"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ANALYZER PAGE -->
+      <section id="analyzer" class="hidden space-y-6">
+        
+        <div class="grid grid-cols-12 gap-6">
+
+          <!-- LEFT: OCR + AI ANALYSIS -->
+          <div class="col-span-7 space-y-4">
+
+            <!-- UPLOAD + ACTIONS -->
+            <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+              <h2 class="text-lg font-semibold mb-3">🔎 Evidence Analyzer</h2>
+
+              <label class="block text-xs text-slate-400 mb-1">Select Case</label>
+              <select id="case-id-input" class="w-full text-sm mb-3 bg-black/40 p-2 rounded-md border border-white/10 text-white">
+                <option value="">-- Loading Cases... --</option>
+              </select>
+
+              <input id="file-input" type="file"
+                class="w-full text-sm mb-3 bg-black/20 p-2 rounded-md" />
+
+              <div class="flex gap-3">
+                <button id="run-ocr"
+                  class="flex-1 py-2 rounded-md bg-gradient-to-r from-cyan-500 to-blue-300 text-black font-semibold">
+                  Run OCR
+                </button>
+
+                <button id="run-sim"
+                  class="flex-1 py-2 rounded-md border border-white/10">
+                  Similarity Search
+                </button>
+              </div>
+            </div>
+
+            <!-- AI INSIGHTS -->
+            <div class="p-4 rounded-2xl bg-black/30 border border-white/10">
+              <h3 class="font-semibold mb-2">🧠 AI Insights</h3>
+              <div id="ai-summary" class="text-sm leading-relaxed text-slate-300">
+                Run OCR to generate insights.
+              </div>
+            </div>
+
+            <!-- KEY FINDINGS -->
+            <div class="p-4 rounded-2xl bg-black/30 border border-white/10">
+              <h3 class="font-semibold mb-2">📌 Key Findings</h3>
+              <ul id="key-findings" class="text-sm space-y-1 text-slate-300"></ul>
+            </div>
+
+            <!-- KEYWORDS -->
+            <div class="p-4 rounded-2xl bg-black/30 border border-white/10">
+              <h3 class="font-semibold mb-2">🔑 Keywords</h3>
+              <div id="keyword-tags" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- RAW OCR -->
+            <details class="p-4 rounded-2xl bg-black/20 border border-white/10">
+              <summary class="cursor-pointer font-semibold">📄 Raw OCR Text</summary>
+              <pre id="ocr-output"
+                class="mt-2 text-xs max-h-40 overflow-auto text-slate-300"></pre>
+            </details>
+
+          </div>
+
+          <!-- RIGHT: SIMILARITY PANEL -->
+          <div class="col-span-5">
+            <div id="similarity-panel" class="similarity-card">
+              <h3 class="font-semibold mb-3">📊 Similarity Results</h3>
+              <div id="similarityResults"></div>
+              <div id="sim-results" class="sim-list"></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section id="reports" class="hidden space-y-6">
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <h2 class="text-lg font-semibold">Reports</h2>
+          <p class="text-sm text-slate-400">Generate or export case summaries (mock)</p>
+          <div class="mt-4">
+            <button class="py-2 px-3 rounded-md bg-gradient-to-r from-cyan-500 to-blue-300 text-black font-semibold">Generate PDF Summary</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="settings" class="hidden space-y-6">
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <h2 class="text-lg font-semibold">Settings</h2>
+          <p class="text-sm text-slate-400">Theme & preferences</p>
+
+          <div class="mt-4 space-y-3">
+            <label class="flex items-center gap-3"><input id="toggle-neon" type="checkbox" checked /> <span>Enable Neon Accents</span></label>
+            <label class="flex items-center gap-3"><input id="sticky-sidebar" type="checkbox" checked /> <span>Sticky Sidebar</span></label>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+<script src="{{url_for('static', filename='js/script.js') }}"></script>  
+</body>
+</html>

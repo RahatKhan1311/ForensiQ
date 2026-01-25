@@ -1,0 +1,14 @@
+{
+    "id": "FQ-2025-002",
+    "title": "Phishing Campaign",
+    "date": "2025-10-10",
+    "status": "Investigating",
+    "priority": "Medium",
+    "owner": "Bob",
+    "evidence": [
+        "phish_emails.zip"
+    ],
+    "notes": [
+        "Email headers show spoofed domain."
+    ]
+}
