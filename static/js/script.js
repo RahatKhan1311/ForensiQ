@@ -1,46 +1,66 @@
 let CASES = [];
+const token = localStorage.getItem("token");
+const isDashboardPage = !!document.getElementById("openCasesCount");
 
+if(isDashboardPage) {
+    loadDashboardStats();
+    setInterval(loadDashboardStats, 30000);
+}
 // Fetch cases from backend
-function fetchCases() {
-  fetch("/api/cases")
-    .then(res => res.json())
-    .then(cases => {  // Direct array, not nested in 'data' object
-          
-      if (!Array.isArray(cases)) {
-        console.error('Expected array but got:', cases);
-        return;
-      }
-      
-      CASES = cases;
-      renderCases();
+async function fetchCases() {
+  //const token = localStorage.getItem("token");
+  if (!token) return window.location.href = "/login"; // redirect if not logged in
 
-      const casesContainer = document.getElementById("cases-container");
-      if(casesContainer){
-        casesContainer.innerHTML="";
-        CASES.forEach(c => {
-          const btn = document.createElement("button");
-          btn.className="select-case-btn py-1 px-2 m-1 rounded-md bg-gray-800 text-white hover:bg-cyan-600";
-          
-          // Use the correct field names
-          const caseId = c.case_id || c.id;
-          const caseTitle = c.title || `Case ${caseId}`;
-          
-          btn.dataset.caseId = caseId;
-          btn.innerText = caseTitle;
-          btn.onclick = () => {
-            document.getElementById("case-id-input").value = caseId;
-            console.log('Selected case:', caseId);
-          };
-          casesContainer.appendChild(btn);
-        });
-      }
-    })
-    .catch(err => console.error("Error fetching cases:", err));
+  try {
+    const res = await fetch("/api/cases", {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const cases = await res.json();
+
+    if (!Array.isArray(cases)) {
+      console.error('Expected array but got:', cases);
+      return;
+    }
+
+    CASES = cases;
+    renderCases();
+
+    const casesContainer = document.getElementById("cases-container");
+    if (casesContainer) {
+      casesContainer.innerHTML = "";
+      CASES.forEach(c => {
+        const btn = document.createElement("button");
+        btn.className = "select-case-btn py-1 px-2 m-1 rounded-md bg-gray-800 text-white hover:bg-cyan-600";
+
+        const caseId = c.case_id || c.id;
+        const caseTitle = c.title || `Case ${caseId}`;
+
+        btn.dataset.caseId = caseId;
+        btn.innerText = caseTitle;
+        btn.onclick = () => {
+          document.getElementById("case-id-input").value = caseId;
+          console.log('Selected case:', caseId);
+        };
+
+        casesContainer.appendChild(btn);
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching cases:", err);
+  }
 }
 
 
 function deleteCase(id) {
-  fetch(`/api/delete_case/${id}`, { method: "DELETE" })
+  //const token = localStorage.getItem("token");
+  fetch(`/api/delete_case/${id}`, { 
+    method: "DELETE",
+    headers: { 
+      "Authorization": `Bearer ${token}`
+    }
+  })
     .then(res => res.json())
     .then(data => {
       console.log("Case deleted:", data);
@@ -55,9 +75,12 @@ async function addNoteToCase(caseId) {
 
   if (!note || note.trim() === "") return;
 
+  //const token = localStorage.getItem("token");
   const res = await fetch(`/api/add_note/${caseId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json" },
     body: JSON.stringify({ note })
   });
 
@@ -73,9 +96,12 @@ async function assignCaseToAnalyst(caseId) {
 
   if (!analyst) return;
 
+  //const token = localStorage.getItem("token");
   const res = await fetch(`/api/assign_analyst/${caseId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json" },
     body: JSON.stringify({ analyst })
   });
 
@@ -301,6 +327,9 @@ function createNewCase() {
     // POST to backend
     fetch("/api/new_case", {
       method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
       body: formData // send as multipart/form-data
     })
     .then(res => res.json())
@@ -315,23 +344,30 @@ function createNewCase() {
   };
 }
 
-function loadDashboardStats() {
-  fetch("/api/dashboard")
-    .then(res => res.json())
-    .then(data => {
-      // Make sure keys match exactly what Flask returns
-      document.getElementById("openCasesCount").innerText = data.open_cases;
-      document.getElementById("pendingCasesCount").innerText = data.pending_analysis;
-      document.getElementById('avgResponse').innerText = data.avg_response;
-    })
-    .catch(err => console.error("Error loading dashboard stats:", err));
+async function loadDashboardStats() {
+  //const token = localStorage.getItem("token"); 
+  try {
+    const res = await fetch("/api/dashboard", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`, 
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!res.ok) throw new Error("Unauthorized or fetch failed");
+    const data = await res.json();
+
+    document.getElementById("openCasesCount").innerText = data.open_cases;
+    document.getElementById("pendingCasesCount").innerText = data.pending_analysis;
+    document.getElementById('avgResponse').innerText = data.avg_response;
+
+  } catch(err) {
+    console.error("Error loading dashboard stats:", err);
+    window.location.href = "/login"; // redirect if token invalid
+  }
 }
 
-// Call on page load
-loadDashboardStats();
-
-// Optional: auto-refresh every 30 seconds
-setInterval(loadDashboardStats, 30000);
 
 let lastInsertedId = null;
 
@@ -365,6 +401,9 @@ document.getElementById("run-ocr").addEventListener("click", async () => {
 
     const res = await fetch("/api/analyze/ocr", {
       method: "POST",
+      headers:{
+        "Authorization": `Bearer ${token}`
+      },
       body: formData
     });
 
@@ -453,7 +492,9 @@ document.getElementById("run-sim").addEventListener("click", async () => {
   try {    
     const res = await fetch("/api/analyze/similarity", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json" },
       body: JSON.stringify({ inserted_id: lastInsertedId })
     });
     
@@ -590,45 +631,49 @@ async function loadLatestAnalysis() {
 
 // Function to fill the dropdown with your database cases
 async function refreshCaseDropdown() {
-    const caseSelect = document.getElementById("case-id-input");
-    
-    try {
-        const res = await fetch("/api/cases");
-        const cases = await res.json();  // This is a direct array
-                
-        // Clear dropdown and add default option
-        caseSelect.innerHTML = '<option value="">-- Select a Case --</option>';
-        
-        if (Array.isArray(cases) && cases.length > 0) {
-            cases.forEach(c => {
-                const option = document.createElement("option");
-                
-                // Try different possible field names
-                const caseId = c.case_id || c.id || c.caseId || c.CaseID || '';
-                const title = c.title || c.case_title || c.name || `Case ${caseId}`;
-                
-                if (caseId) {
-                    option.value = caseId;
-                    option.textContent = title;
-                    caseSelect.appendChild(option);
-                } else {
-                    console.warn('Skipping case with no ID:', c);
-                }
-            });
-          
-        } else {
-            console.warn('No cases array found or empty');
-            caseSelect.innerHTML = '<option value="">-- No Cases Available --</option>';
-        }
-        
-    } catch (err) {
-        console.error('Error loading cases for dropdown:', err);
-        caseSelect.innerHTML = '<option value="">-- Error Loading Cases --</option>';
-    }
-}
+  //const token = localStorage.getItem("token");
+  const caseSelect = document.getElementById("case-id-input");
+  if (!caseSelect) return;
 
+  if (!token) return window.location.href = "/login";
+
+  try {
+    const res = await fetch("/api/cases", {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const cases = await res.json();
+
+    // Clear dropdown and add default option
+    caseSelect.innerHTML = '<option value="">-- Select a Case --</option>';
+
+    if (Array.isArray(cases) && cases.length > 0) {
+      cases.forEach(c => {
+        const option = document.createElement("option");
+        const caseId = c.case_id || c.id || '';
+        const title = c.title || `Case ${caseId}`;
+
+        if (caseId) {
+          option.value = caseId;
+          option.textContent = title;
+          caseSelect.appendChild(option);
+        } else {
+          console.warn('Skipping case with no ID:', c);
+        }
+      });
+    } else {
+      caseSelect.innerHTML = '<option value="">-- No Cases Available --</option>';
+    }
+  } catch (err) {
+    console.error('Error loading cases for dropdown:', err);
+    caseSelect.innerHTML = '<option value="">-- Error Loading Cases --</option>';
+  }
+}
 // Run this immediately so the list is ready when the page opens
-refreshCaseDropdown();
+if(isDashboardPage){
+  refreshCaseDropdown();
+}
 
 // === Save functions  ===
   function saveProfile() {
@@ -637,7 +682,6 @@ refreshCaseDropdown();
       email: document.getElementById("user-email").value,
       password: document.getElementById("user-password").value
     };
-    console.log("Profile saved:", data);
     alert("Profile saved!");
   }
 
@@ -672,12 +716,15 @@ refreshCaseDropdown();
     }
   }
 
+
 // On page load
 document.addEventListener('DOMContentLoaded', () => {
-  fetchCases();
-  showSection('dashboard');
-  loadLatestAnalysis();
-
+  if(isDashboardPage) {
+    fetchCases();
+    showSection('dashboard');
+    loadLatestAnalysis();
+  }
+  
   const casesContainer = document.getElementById("cases-container");
   function renderCaseButtons() {
     if(!casesContainer) return;
@@ -819,8 +866,10 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 }
 
 // Instant apply on checkbox change
-document.getElementById("toggle-dark-theme").addEventListener("change", applyTheme);
-document.getElementById("toggle-neon-theme").addEventListener("change", applyTheme);
+const darkToggle = document.getElementById("toggle-dark-theme");
+if (darkToggle) darkToggle.addEventListener("change", applyTheme);
 
+const neonToggle = document.getElementById("toggle-neon-theme");
+if (neonToggle) neonToggle.addEventListener("change", applyTheme);
 
 });

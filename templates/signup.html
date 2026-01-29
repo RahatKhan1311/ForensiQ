@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ForensiQ | Signup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen text-white">
+
+  <div class="bg-slate-800 p-8 rounded-xl w-full max-w-md">
+    <h2 class="text-2xl font-bold mb-6 text-center">Create Account</h2>
+
+    <form id="signupForm" class="space-y-4">
+      <input type="text" id="signupName" placeholder="Full Name"
+        class="w-full p-2 rounded bg-slate-700 focus:outline-none" required />
+
+      <input type="email" id="signupEmail" placeholder="Email"
+        class="w-full p-2 rounded bg-slate-700 focus:outline-none" required />
+
+      <div class="relative">
+        <input type="password" id="signupPassword" placeholder="Password"
+          class="w-full p-2 rounded bg-slate-700 focus:outline-none" required />
+        <button type="button" id="toggleSignupPassword"
+          class="absolute right-2 top-2 text-sm text-gray-400">Show</button>
+      </div>
+
+      <!-- Password rules -->
+      <ul class="text-sm mt-2 space-y-1">
+        <li id="rLength"  class="text-red-400">• At least 8 characters</li>
+        <li id="rUpper"   class="text-red-400">• One uppercase letter</li>
+        <li id="rLower"   class="text-red-400">• One lowercase letter</li>
+        <li id="rNumber"  class="text-red-400">• One number</li>
+        <li id="rSpecial" class="text-red-400">• One special character</li>
+      </ul>
+
+      <button type="submit"
+        class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded font-semibold">
+        Sign Up
+      </button>
+    </form>
+
+    <p class="text-center mt-4 text-sm">
+      Already have an account?
+      <a href="/login" class="text-blue-400">Login</a>
+    </p>
+  </div>
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

@@ -89,6 +89,7 @@
       color: var(--neon-color);
       text-shadow: 0 0 5px var(--neon-color), 0 0 10px var(--neon-color), 0 0 20px var(--neon-color);
     }
+    
   </style>
 </head>
 <body class="text-slate-200 antialiased">
@@ -149,8 +150,10 @@
           <p class="text-slate-400 text-sm">Overview of active cases and AI insights</p>
         </div>
         <div class="flex items-center gap-4">
-          <div class="text-sm text-slate-400">Role: Investigator</div>
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center font-bold text-black">KR</div>
+          <div id="user-role" class="text-sm text-slate-400">Role </div>
+          <div id="user-avatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500
+                flex items-center justify-center font-bold text-black">RK
+          </div>
         </div>
       </header>
 
@@ -161,30 +164,30 @@
           <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
             <div class="text-xs text-slate-400">Open Cases</div>
             <div id="openCasesCount" class="text-2xl font-bold">0</div>
-            <div id="openCasesDelta" class="text-sm text-slate-400">—</div>
+            <!--<div id="openCasesDelta" class="text-sm text-slate-400">—</div>-->
           </div>
 
           <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
             <div class="text-xs text-slate-400">Pending Analysis</div>
             <div id="pendingCasesCount" class="text-2xl font-bold">0</div>
-            <div id="pendingCasesDelta" class="text-sm text-slate-400">—</div>
+            <!--<div id="pendingCasesDelta" class="text-sm text-slate-400">—</div>-->
           </div>
 
           <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
             <div class="text-xs text-slate-400">Avg Response (hrs)</div>
             <div id="avgResponse" class="text-2xl font-bold">—</div>
-            <div id="avgResponseDelta" class="text-sm text-slate-400">—</div>
+            <!--<div id="avgResponseDelta" class="text-sm text-slate-400">—</div>-->
           </div>
         </div>
 
         <!-- Quick lists -->
         <div class="grid grid-cols-12 gap-6">
-          <div class="col-span-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+          <div class="col-span-12 bg-white/5 p-4 rounded-2xl border border-white/10">
             <h2 class="font-semibold mb-4">Recent Cases</h2>
             <ul id="recent-cases" class="space-y-3"></ul>
           </div>
 
-          <div class="col-span-6 p-4 rounded-2xl bg-gradient-to-br from-cyan-400/10 to-transparent border border-white/10">
+          <!--<div class="col-span-6 p-4 rounded-2xl bg-gradient-to-br from-cyan-400/10 to-transparent border border-white/10">
             <h2 class="font-semibold mb-3">AI Analyzer (Quick)</h2>
             <p class="text-sm text-slate-400 mb-3">Quick upload & run OCR</p>
 
@@ -196,9 +199,9 @@
             </div>
 
             <div id="quick-output" class="bg-black/30 p-3 rounded-md text-xs text-slate-400 h-24 overflow-auto">OCR Output will appear here...</div>
-          </div>
+          </div>-->
         </div>
-      </section>
+      </section> 
 
       <!-- CASES LIST -->
       <section id="cases" class="hidden space-y-6">

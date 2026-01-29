@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ForensiQ | Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen text-white">
+
+  <div class="bg-slate-800 p-8 rounded-xl w-full max-w-md">
+    <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
+
+    <form id="loginForm" class="space-y-4">
+      <input type="email" id="loginEmail" placeholder="Email"
+        class="w-full p-2 rounded bg-slate-700 focus:outline-none" required />
+
+      <div class="relative">
+        <input type="password" id="loginPassword" placeholder="Password"
+          class="w-full p-2 rounded bg-slate-700 focus:outline-none" required />
+        <button type="button" id="toggleLoginPassword"
+          class="absolute right-2 top-2 text-sm text-gray-400">Show</button>
+      </div>
+
+      <button type="submit"
+        class="w-full bg-green-600 hover:bg-green-700 p-2 rounded font-semibold">
+        Login
+      </button>
+    </form>
+
+    <p class="text-center mt-4 text-sm">
+      Don’t have an account?
+      <a href="/signup" class="text-blue-400">Signup</a>
+    </p>
+  </div>
+
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

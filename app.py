@@ -1,16 +1,19 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_file, redirect, send_from_directory, url_for, session
 import os
 import json
-from werkzeug.utils import secure_filename
-from fpdf import FPDF
-from flask_mysqldb import MySQL, MySQLdb
+from extensions import mysql
 import MySQLdb.cursors
 DictCursor = MySQLdb.cursors.DictCursor
+from werkzeug.utils import secure_filename
+from fpdf import FPDF
 from datetime import datetime
+from routes.auth import token_required
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import json
+
+from routes.auth import auth_bp
 
 import pytesseract
 from PIL import Image
@@ -155,13 +158,15 @@ def extract_text_from_file(file):
 app= Flask(__name__, template_folder="templates", static_folder="static")
 app.config['UPLOAD_FOLDER'] = 'uploads' 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+app.register_blueprint(auth_bp)
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'rahat@13'
 app.config['MYSQL_DB'] = 'forensiq'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-mysql = MySQL(app)
+app.config['SECRET_KEY'] = 'secretkey123'
+mysql.init_app(app)
 app.mysql = mysql
 
 # ---------- Helper functions ----------
@@ -198,8 +203,16 @@ def row_to_case(row):
 def home():
     return render_template("index.html")
 
-@app.route("/dashboard", methods=["GET","POST"])
-def dashboard():
+@app.route("/signup")
+def signup():
+    return render_template("signup.html")
+
+@app.route("/login")
+def login():
+    return render_template("login.html")
+
+@app.route("/dashboard")
+def dashboard_page():
     return render_template("dashboard.html")
 
 @app.route("/api/cases", methods=["GET"])
@@ -214,7 +227,8 @@ def get_cases():
 
 
 @app.route("/api/dashboard", methods=["GET"])
-def dashboard_stats():
+@token_required
+def dashboard_stats(current_user):
     try:
         cur = mysql.connection.cursor(DictCursor)
 
@@ -269,7 +283,8 @@ def dashboard_stats():
             "pending_analysis": pending_analysis,
             "closed_cases": closed_cases,
             "avg_response": avg_response,
-            "recent_cases": recent_cases
+            "recent_cases": recent_cases,
+            "current_user": current_user
         })
 
     except Exception as e:
@@ -463,6 +478,7 @@ def export_case(case_id):
     pdf.output(pdf_path)    
 
     return send_file(pdf_path, as_attachment=True, download_name=f"Case_{case_id}.pdf", mimetype="application/pdf")
+
 
 # Run OCR on uploaded file
 @app.route("/api/analyze/ocr", methods=["POST"])
