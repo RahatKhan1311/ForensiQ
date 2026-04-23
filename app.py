@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify, send_file, redirect, send_from_directory, url_for, session
 import os
 import json
+from dotenv import load_dotenv
+load_dotenv()
 from extensions import mysql
 import MySQLdb.cursors
 DictCursor = MySQLdb.cursors.DictCursor
@@ -97,8 +99,8 @@ def highlight_keywords(text, keywords_dict):
 
 # PDF handling
 from pdf2image import convert_from_path
-POPPLER_PATH = r"C:\poppler-25.12.0\Library\bin"
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+POPPLER_PATH = os.getenv('POPPLER_PATH')
+pytesseract.pytesseract.tesseract_cmd = os.getenv('TESSERACT_PATH')
 
 def perform_ocr(filepath):
     try:
@@ -162,10 +164,10 @@ app.register_blueprint(auth_bp)
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'rahat@13'
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = 'forensiq'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-app.config['SECRET_KEY'] = 'secretkey123'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 mysql.init_app(app)
 app.mysql = mysql
 
@@ -403,30 +405,50 @@ def assign_analyst(case_id):
     cur.close()
     return jsonify({"message": f"Case {case_id} assigned successfully"}), 200
 
+@app.route("/api/case_notes/<case_id>")
+def get_case_notes(case_id):
+    cur = mysql.connection.cursor()
+
+    cur.execute("""
+        SELECT note, created_by, created_at
+        FROM case_notes
+        WHERE case_id=%s
+        ORDER BY created_at DESC
+    """, (case_id,))
+
+    rows = cur.fetchall()
+    cur.close()
+
+    notes=[]
+    for r in rows:
+        notes.append({
+            "note": r["note"],
+            "by": r["created_by"] or "Analyst",
+            "time": r["created_at"].strftime("%Y-%m-%d %H:%M")
+        })
+
+    return jsonify(notes)
+
 @app.route("/api/add_note/<case_id>", methods=["POST"])
 def add_note(case_id):
     data = request.json
     note = data.get("note")
+    created_by = data.get("created_by", "Analyst")
+
     if not note:
         return jsonify({"error": "No note provided"}), 400
     
     cur = mysql.connection.cursor()
     # fetch current notes
-    cur.execute("SELECT notes FROM cases WHERE case_id=%s", (case_id,))
-    row = cur.fetchone()
-    if not row:
-        cur.close()
-        return jsonify({"error": "Case not found"}), 404
+    cur.execute("""
+        INSERT INTO case_notes (case_id, note, created_by)
+        VALUES (%s, %s, %s)
+    """, (case_id, note, created_by))
 
-    notes_json = row.get('notes') if isinstance(row, dict) else row[0]
-    notes = json.loads(notes_json or "[]")
-    notes.append(note)
-
-    cur.execute("UPDATE cases SET notes=%s WHERE case_id=%s", (json.dumps(notes), case_id))
     mysql.connection.commit()
     cur.close()
 
-    return jsonify({"message": "Note added", "notes": notes})
+    return jsonify({"message": "Note added successfully"}), 201
 
 @app.route('/uploads/<path:filename>')
 def serve_uploads(filename):
@@ -480,10 +502,9 @@ def export_case(case_id):
     return send_file(pdf_path, as_attachment=True, download_name=f"Case_{case_id}.pdf", mimetype="application/pdf")
 
 
-# Run OCR on uploaded file
+# Run OCR(Optical character recognition) on uploaded file
 @app.route("/api/analyze/ocr", methods=["POST"])
 def run_ocr():
-    # 1️⃣ Get file and case_id
     file = request.files.get("file")
     case_id_str = request.form.get("case_id", "").strip()
 
@@ -496,12 +517,10 @@ def run_ocr():
             "hint": "Check if your dropdown has a value selected"
         }), 400
 
-    # 2️⃣ Save uploaded file
     filename = secure_filename(file.filename)
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
-    # 3️⃣ Perform OCR
     ocr_text = ""
     confidence_score = 0
     data={}
@@ -541,7 +560,7 @@ def run_ocr():
         traceback.print_exc()
         return jsonify({"error": f"OCR Error: {str(e)}"}), 500
 
-    # 4️⃣ AI Processing (Key insights & keywords)
+    # AI Processing (Key insights & keywords)
     try:
         key_insights = extract_key_insights(ocr_text)        
         entities = extract_entities(ocr_text)         
@@ -564,7 +583,7 @@ def run_ocr():
         traceback.print_exc()
         return jsonify({"error": f"AI Processing Error: {str(e)}"}), 500
 
-    # 5️⃣ Get numeric case_id from DB
+    # Get numeric case_id from DB
     try:
         cur = mysql.connection.cursor(DictCursor)
         cur.execute("SELECT id FROM cases WHERE case_id=%s", (case_id_str,))
@@ -578,7 +597,7 @@ def run_ocr():
     except Exception as e:
         return jsonify({"error": f"Database query error: {str(e)}"}), 500
 
-    # 6️⃣ Insert into ai_results table
+    #Insert into ai_results table
     cur = mysql.connection.cursor()
     new_id = None
     try:
@@ -596,7 +615,7 @@ def run_ocr():
     finally:
         cur.close()
 
-    # 7️⃣ Return response
+    # Return response
     return jsonify({
         "ocr_text": ocr_text[:500] + "..." if len(ocr_text) > 500 else ocr_text,
         "analysis_text": structured_output,
