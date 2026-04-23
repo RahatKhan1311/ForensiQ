@@ -5,6 +5,35 @@
   <title>ForensiQ | Signup</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
+<!-- GLOBAL POPUP MODAL -->
+<div id="popupOverlay" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+  <div class="bg-slate-800 w-96 rounded-xl p-6 border border-slate-700 shadow-xl text-white">
+
+    <h3 id="popupTitle" class="text-lg font-bold mb-3">Title</h3>
+
+    <p id="popupMessage" class="text-gray-300 mb-4"></p>
+
+    <input id="popupInput"
+      class="w-full p-2 rounded bg-slate-700 hidden mb-4 outline-none"
+      placeholder="Enter value" />
+
+    <div class="flex justify-end gap-2">
+      <button id="popupCancel"
+        class="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 hidden">
+        Cancel
+      </button>
+
+      <button id="popupOk"
+        class="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 font-semibold">
+        OK
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
 <body class="bg-slate-900 flex items-center justify-center min-h-screen text-white">
 
   <div class="bg-slate-800 p-8 rounded-xl w-full max-w-md">

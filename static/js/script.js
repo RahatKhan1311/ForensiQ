@@ -2,6 +2,52 @@ let CASES = [];
 const token = localStorage.getItem("token");
 const isDashboardPage = !!document.getElementById("openCasesCount");
 
+// POPUP SYSTEM 
+function openPopup({ title, message, showInput=false, defaultValue="", showCancel=false }) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("popupOverlay");
+    const titleEl = document.getElementById("popupTitle");
+    const msgEl = document.getElementById("popupMessage");
+    const inputEl = document.getElementById("popupInput");
+    const okBtn = document.getElementById("popupOk");
+    const cancelBtn = document.getElementById("popupCancel");
+
+    if(!overlay) {
+      alert(message);
+      return resolve(null);
+    }
+
+    titleEl.innerText = title;
+    msgEl.innerText = message;
+
+    inputEl.classList.toggle("hidden", !showInput);
+    inputEl.value = defaultValue;
+
+    cancelBtn.classList.toggle("hidden", !showCancel);
+
+    overlay.classList.remove("hidden");
+    overlay.classList.add("flex");
+
+    okBtn.onclick = () => {
+      const val = showInput ? inputEl.value.trim() : true;
+      closePopup();
+      resolve(val);
+    };
+
+    cancelBtn.onclick = () => {
+      closePopup();
+      resolve(null);
+    };
+  });
+}
+
+function closePopup() {
+  const overlay = document.getElementById("popupOverlay");
+  overlay.classList.remove("flex");
+  overlay.classList.add("hidden");
+}
+
+
 if(isDashboardPage) {
     loadDashboardStats();
     setInterval(loadDashboardStats, 30000);
@@ -52,7 +98,6 @@ async function fetchCases() {
   }
 }
 
-
 function deleteCase(id) {
   //const token = localStorage.getItem("token");
   fetch(`/api/delete_case/${id}`, { 
@@ -70,29 +115,68 @@ function deleteCase(id) {
     .catch(err => console.error("Error deleting case:", err));
 }
 
-async function addNoteToCase(caseId) {
-  const note = prompt("Enter a new note:");
+async function addNote(caseId) {
+  const note = await openPopup({
+    title: "Add Note",
+    message: "Enter case note:",
+    showInput: true,
+    showCancel: true
+  });
 
-  if (!note || note.trim() === "") return;
+  if (!note) return;
 
-  //const token = localStorage.getItem("token");
   const res = await fetch(`/api/add_note/${caseId}`, {
     method: "POST",
-    headers: { 
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json" },
-    body: JSON.stringify({ note })
+    headers: { "Content-Type": "application/json",
+               "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      note: note,
+      created_by: "Analyst"
+    })
   });
 
   const data = await res.json();
-  alert(data.message);
 
-  fetchCases();
-  openCase(caseId);
+  await openPopup({
+    title: "Success",
+    message: data.message
+  });
+
+  loadNotes(caseId);   // 🔥 refresh notes immediately
+}
+
+function loadNotes(caseId) {
+  const notesEl = document.getElementById("case-notes");
+  if (!notesEl) return;
+
+  fetch(`/api/case_notes/${caseId}`)
+    .then(r => r.json())
+    .then(notes => {
+      if (!notes.length) {
+        notesEl.innerHTML =
+          `<p class="text-slate-400 italic">No notes yet.</p>`;
+        return;
+      }
+
+      notesEl.innerHTML = notes.map(n => `
+        <li class="bg-slate-700 p-2 rounded mb-2">
+          ${n.note}
+          <div class="text-xs text-gray-400">
+            — ${n.by || "Analyst"} | ${n.time || ""}
+          </div>
+        </li>
+      `).join("");
+    });
 }
 
 async function assignCaseToAnalyst(caseId) {
-  const analyst = prompt("Enter analyst name:");
+  const analyst = await openPopup({
+    title: "Assign / Reassign Analyst",
+    message: "Enter analyst name:",
+    showInput: true,
+    showCancel: true
+  });
 
   if (!analyst) return;
 
@@ -106,9 +190,20 @@ async function assignCaseToAnalyst(caseId) {
   });
 
   const data = await res.json();
-  alert(data.message);
+  if (!res.ok) {
+    await openPopup({
+      title: "Error",
+      message: data.error || "Assignment failed"
+    });
+    return;
+  }
 
-  fetchCases();
+  await openPopup({
+    title: res.ok ? "Updated" : "Error",
+    message: data.message || data.error || "Failed to assign"
+  });
+
+  await fetchCases();
   openCase(caseId);
 }
 
@@ -182,14 +277,14 @@ function showSection(id) {
 
 // Open a case in detail
 function openCase(id) {
-  const c = CASES.find(x => x.id === id);
+  const c = CASES.find(x => (x.case_id || x.id) === id);
   if(!c) return;
 
   // Fill case detail section
   document.getElementById('case-title').innerText = `${c.title} — ${c.id}`;
   document.getElementById('case-sub').innerText = `Title: ${c.title}`;
   document.getElementById('case-status').innerText = c.status;
-  document.getElementById('case-owner').innerText = c.owner;
+  document.getElementById('case-owner').innerText = c.owner || "Unassigned";
   document.getElementById('case-priority').innerText = c.priority;
 
   const evidenceList = document.getElementById('evidence-list');
@@ -213,27 +308,13 @@ function openCase(id) {
   }
 
   // Notes
-  const notesEl = document.getElementById('case-notes');
-  notesEl.innerHTML = "";
-
-  if (c.notes && c.notes.length > 0) {
-    c.notes.forEach(note => {
-      const p = document.createElement("p");
-      p.className = "mb-2 border-b border-white/10 pb-1";
-      p.textContent = note;
-      notesEl.appendChild(p);
-    });
-  } else {
-    notesEl.innerHTML = `<p class="text-slate-400 italic">No notes available.</p>`;
-  }
+  loadNotes(c.case_id || c.id);
 
 // Add Note action button
-  const addNoteBtn = document.createElement("button");
-  addNoteBtn.textContent = "Add Note";
-  addNoteBtn.className = "mt-2 py-2 rounded-md bg-[#22c55e] text-black font-semibold w-full";
-  addNoteBtn.onclick = () => addNoteToCase(c.id);
-  
-  notesEl.appendChild(addNoteBtn);
+  const addNoteBtn = document.getElementById("add-note-btn");
+  if (addNoteBtn) {
+    addNoteBtn.onclick = () => addNote(c.id);
+  }
 
   //Dynamic Actions
   const actionBox = document.getElementById("case-actions");
@@ -382,7 +463,11 @@ document.getElementById("run-ocr").addEventListener("click", async () => {
   const caseIdInput = document.getElementById("case-id-input"); 
 
   if (!fileInput.files[0]) {
-    return alert("Please select a file!");
+    await openPopup({
+      title: "Missing File",
+      message: "Please select a file!"
+    });
+    return;
   }
 
   // Remove the case selection check
@@ -479,9 +564,12 @@ document.getElementById("run-ocr").addEventListener("click", async () => {
 // ==================== SIMILARITY BUTTON ====================
 document.getElementById("run-sim").addEventListener("click", async () => {
   if (!lastInsertedId) {
-    alert("Please run OCR on a document first so the system has text to compare!");
-    return;
-  }
+  await openPopup({
+    title: "Run OCR First",
+    message: "Please run OCR before similarity check."
+  });
+  return;
+}
   
   const container = document.getElementById("similarityResults");
   const listContainer = document.getElementById("sim-results");
@@ -682,7 +770,10 @@ if(isDashboardPage){
       email: document.getElementById("user-email").value,
       password: document.getElementById("user-password").value
     };
-    alert("Profile saved!");
+    openPopup({
+      title: "Saved",
+      message: "Profile saved!"
+    });
   }
 
   function savePreferences() {
@@ -695,7 +786,10 @@ if(isDashboardPage){
 
     localStorage.setItem("appPreferences", JSON.stringify(data));
     console.log("Preferences saved:", data);
-    alert("Preferences saved!");
+    openPopup({
+      title: "Saved",
+      message: "Preferences saved!"
+    });
 
     applyTheme(); // apply dark/neon immediately
   }
@@ -706,15 +800,24 @@ if(isDashboardPage){
       aiApiKey: document.getElementById("ai-api-key").value
     };
     console.log("API Keys saved:", data);
-    alert("API keys saved!");
+    openPopup({
+      title: "Saved",
+      message: "API Keys saved!"
+    });
   }
 
-  function resetApp() {
-    if(confirm("Are you sure? This will reset all app settings!")) {
-      console.log("App reset!");
-      alert("App reset!");
-    }
-  }
+  async function resetApp() {
+  const ok = await openPopup({
+    title: "Reset App",
+    message: "Reset all settings?",
+    showCancel: true
+  });
+
+  if (!ok) return;
+
+  openPopup({ title:"Reset", message:"App reset!" });
+}
+
 
 
 // On page load
